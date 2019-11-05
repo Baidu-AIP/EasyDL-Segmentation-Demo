@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <title>Demo</title>
+
+        <style>
+            #error-msg {
+                color: #e60000;
+                padding: 10px 0;
+            }
+
+            .wrapper {
+                position: relative;
+                width: 400px;
+                height: 300px;
+                border: 1px solid #eee;
+                margin: 20px 0;
+            }
+
+            #viewer {
+                width: 100%;
+                height: 100%;
+                line-height: 300px;
+                text-align: center;
+            }
+
+            #viewer img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+            }
+
+            .wrapper #canvas {
+                top: 0;
+                position: absolute;
+                width: 100%;
+                height: 100%;
+            }
+        </style>
+    </head>
+    <body>
+        <h2>Demo</h2>
+
+        <input id="file" type="file" accept="jpg,png,.jpg,.png" />
+
+        <div id="error-msg"></div>
+
+        <div class="wrapper">
+            <div id="viewer"></div>
+
+            <canvas id="canvas"></canvas>
+        </div>
+
+        <script>
+            // 初始化
+            const viewer = document.getElementById('viewer');
+            const errorMsg = document.getElementById('error-msg');
+            const canvas = document.getElementById('canvas');
+            const INITIAL_STATE = {loading: true, src: '', results: [], error: ''};
+            let globalState = {...INITIAL_STATE};
+
+            // 页面状态管理
+            function setState(patch) {
+                Object.assign(globalState, patch);
+                render(globalState);
+            }
+
+            // 页面渲染
+            function render(state) {
+                errorMsg.innerHTML = appendErrorSuffix(state.error);
+
+                if (!state.src) {
+                    viewer.innerHTML = '请在上方选择图片';
+                    return;
+                }
+
+                if (state.loading) {
+                    clearMasks();
+                    viewer.innerHTML = '载入中……';
+                    return;
+                }
+
+                clearMasks();
+                viewer.innerHTML = `<img src="${state.src}">`;
+                state.results.forEach(detection => {
+                    drawMask(detection.mask);
+                });
+            }
+
+            setState(INITIAL_STATE);
+
+            // 安装 hook
+            const file = document.getElementById('file');
+            file.addEventListener('change', function(e) {
+                setState({loading: true, error: '', results: []});
+
+                base64(e.target.files[0])
+                    .then(src => {
+                        setState({src});
+                        return infer(src);
+                    })
+                    .then(response => {
+                        if ('error_code' in response) {
+                            setState({
+                                loading: false,
+                                error: `[${response.error_code}] ${response.error_msg}`
+                            });
+                            return;
+                        }
+
+                        setState({loading: false, results: response.results});
+                    });
+            });
+
+            // 将图片转换成 base64 编码
+            function base64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.onerror = error => reject(error);
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            // 获取图片的原始长宽
+            function getImageResolution(imageSrc) {
+                const img = new Image();
+
+                return new Promise(resolve => {
+                    img.onload = () => resolve({width: img.width, height: img.height});
+                    img.onerror = () => resolve(undefined);
+
+                    img.src = imageSrc;
+                });
+            }
+
+            // 将图片上传至 API 进行推断
+            function infer(imageInBase64) {
+                return new Promise((resolve, reject) => {
+                    const httpRequest = new XMLHttpRequest();
+
+                    httpRequest.onload = function() {
+                        resolve(JSON.parse(this.response));
+                    };
+                    httpRequest.open('POST', '/api');
+                    httpRequest.setRequestHeader('Content-Type', 'application/json;charset=UTF-8');
+
+                    getImageResolution(imageInBase64).then(resolution => {
+                        httpRequest.send(JSON.stringify({image: imageInBase64, resolution}));
+                    });
+                });
+            }
+
+            /**
+             * Helper
+             */
+            function appendErrorSuffix(error) {
+                if (!error) {
+                    return '';
+                }
+
+                return `${error} <a target="_blank" href="https://ai.baidu.com/docs#/EasyDL_VIS_Segmentation_API/f94eb3c2">点击查看错误码详情</a>`;
+            }
+
+            /**
+             * 使用 canvas 画出解码后的 canvas
+             */
+            function drawMask(decodedMask) {
+                const w = decodedMask[0].length;
+                const h = decodedMask.length;
+                const uint = new Uint8ClampedArray(w * h * 4);
+                const fill = [71, 118, 241, 102]; // rgba
+
+                for (let x = 0; x < w; x++) {
+                    for (let y = 0; y < h; y++) {
+                        const data = decodedMask[y][x] ? fill : [0, 0, 0, 0];
+                        uint.set(data, x * 4 + y * w * 4);
+                    }
+                }
+
+                const imageData = new ImageData(uint, w, h);
+                canvas.setAttribute('width', `${w}`);
+                canvas.setAttribute('height', `${h}`);
+                canvas.getContext('2d').putImageData(imageData, 0, 0);
+
+                return ImageData;
+            }
+
+            /**
+             * 清除 canvas 中的所有 mask
+             */
+            function clearMasks() {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width + 1, ctx.canvas.height + 1);
+            }
+        </script>
+    </body>
+</html>
