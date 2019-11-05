@@ -1,0 +1,5 @@
+{
+    "api": "<运行 DEMO 前请替换，可以在 EasyDL 已发布模型中找到>",
+    "ak": "<运行 DEMO 前请替换，上述 API 中绑定的 Access Key>",
+    "sk": "<运行 DEMO 前请替换，上述 API 中绑定的 Access Secret>"
+}
