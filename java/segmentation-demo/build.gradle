@@ -1,0 +1,22 @@
+plugins {
+    id 'java'
+}
+
+plugins {
+    id 'application'
+}
+
+group 'com.baidu.aip.easydl.segmentation'
+version '1.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
+
+mainClassName = 'com.baidu.aip.easydl.segmentation.App'
