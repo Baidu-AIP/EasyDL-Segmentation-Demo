@@ -6,8 +6,11 @@ import java.io.FileInputStream;
 import java.net.URL;
 import java.net.HttpURLConnection;
 import java.util.Base64;
+import java.util.Iterator;
 import java.nio.charset.StandardCharsets;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
@@ -62,6 +65,13 @@ public class App {
         System.out.println("1. 读取图片数据\n");
 
         File imgFile = new File(INPUT_FILEPATH);
+        String imageFormat = getImageFormat(imgFile);
+        if (imageFormat != "JPEG" && imageFormat != "png") {
+            System.out.println("图像格式不支持，该 Demo 仅支持 jpg 与 png");
+            return;
+        } else if (imageFormat == "JPEG") {
+            imageFormat = "jpg";
+        }
 
         BufferedImage bufImg = ImageIO.read(imgFile);
         int width = bufImg.getWidth();
@@ -69,6 +79,7 @@ public class App {
         String imgBase64String = getBase64String(imgFile);
         System.out.println("读取图像： " + INPUT_FILEPATH);
         System.out.println("宽度：" + width + ", " + "高度：" + height);
+        System.out.println("类型：" + imageFormat);
         System.out.println("----------");
 
         System.out.println("2. 向模型 API 发送请求\n");
@@ -87,8 +98,8 @@ public class App {
 
             r.applyMask(newBufImg, 0.5);
 
-            String OUTPUT_FILEPATH = OUTPUT_FOLDER + OUTPUT_FILENAME + "_segment" + i + ".jpg";
-            saveImage(newBufImg, OUTPUT_FILEPATH);
+            String OUTPUT_FILEPATH = OUTPUT_FOLDER + OUTPUT_FILENAME + "_segment" + i + "." + imageFormat;
+            saveImage(newBufImg, OUTPUT_FILEPATH, imageFormat);
             System.out.println("  写入图像： " + OUTPUT_FILEPATH + "\n");
         }
         System.out.println("----------");
@@ -96,8 +107,8 @@ public class App {
         System.out.println("3-2. 将所有区域应用于原图像\n");
         m.applyResultMasks(bufImg, 0.5);
 
-        String OUTPUT_FILEPATH = OUTPUT_FOLDER + OUTPUT_FILENAME + "_segment_all.jpg";
-        saveImage(bufImg, OUTPUT_FILEPATH);
+        String OUTPUT_FILEPATH = OUTPUT_FOLDER + OUTPUT_FILENAME + "_segment_all." + imageFormat;
+        saveImage(bufImg, OUTPUT_FILEPATH, imageFormat);
         System.out.println("写入图像： " + OUTPUT_FILEPATH);
         System.out.println("----------");
     }
@@ -155,9 +166,19 @@ public class App {
         return copy;
     }
 
-    public void saveImage(BufferedImage bufImg, String outputFilename) throws IOException {
+    public void saveImage(BufferedImage bufImg, String outputFilename, String imageFormat) throws IOException {
         File fout = new File(outputFilename);
-        ImageIO.write(bufImg, "jpg", fout);
+        ImageIO.write(bufImg, imageFormat, fout);
     }
 
+    public String getImageFormat(File imgFile) throws IOException {
+        ImageInputStream iis = ImageIO.createImageInputStream(imgFile);
+        Iterator<ImageReader> imageReaders = ImageIO.getImageReaders(iis);
+        String formatName = null;
+        while (imageReaders.hasNext()) {
+            ImageReader reader = (ImageReader) imageReaders.next();
+            formatName = reader.getFormatName();
+        }
+        return formatName;
+    }
 }
