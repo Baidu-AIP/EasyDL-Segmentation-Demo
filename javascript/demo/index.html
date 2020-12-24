@@ -92,7 +92,7 @@
 
             // 安装 hook
             const file = document.getElementById('file');
-            file.addEventListener('change', function(e) {
+            file.addEventListener('change', function (e) {
                 setState({loading: true, error: '', results: []});
 
                 base64(e.target.files[0])
@@ -140,7 +140,7 @@
                 return new Promise((resolve, reject) => {
                     const httpRequest = new XMLHttpRequest();
 
-                    httpRequest.onload = function() {
+                    httpRequest.onload = function () {
                         resolve(JSON.parse(this.response));
                     };
                     httpRequest.open('POST', '/api');
@@ -179,7 +179,17 @@
                     }
                 }
 
+                const factor = Math.min(400 / w, 300 / h);
+                const domW = factor * w;
+                const domH = factor * h;
+                const marginW = Math.max((400 - domW) / 2);
+                const marginH = Math.max((300 - domH) / 2);
+
                 const imageData = new ImageData(uint, w, h);
+                canvas.style.width = `${domW}px`;
+                canvas.style.height = `${domH}px`;
+                canvas.style.marginLeft = `${marginW}px`;
+                canvas.style.marginTop = `${marginH}px`;
                 canvas.setAttribute('width', `${w}`);
                 canvas.setAttribute('height', `${h}`);
                 canvas.getContext('2d').putImageData(imageData, 0, 0);
